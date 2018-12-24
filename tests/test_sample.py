@@ -7,6 +7,13 @@ import unittest
 from tests import utility
 
 
+class Sample(object):
+
+    def __init__(self, element1='abc', element2='123'):
+        self.element1 = element1
+        self.element2 = element2
+
+
 class Test(unittest.TestCase):
 
 
@@ -24,6 +31,10 @@ class Test(unittest.TestCase):
 
     def testName(self):
         print('Test Start.')
+        sample1 = Sample()
+        print(sample1.__dict__)
+        sample2 = Sample('qaz', 'wsx')
+        print(sample2.__dict__)
         print('Test Finished.')
 
 
