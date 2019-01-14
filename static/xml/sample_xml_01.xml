@@ -1,0 +1,17 @@
+<?xml version='1.0' encoding='utf-8'?>
+<root>
+    <dir>C:\Bridge Software</dir>
+    <class>
+        <point>50</point>
+        <name>Bridge</name>
+    </class>
+    <class>
+        <point>100</point>
+        <name>soft</name>
+    </class>
+    <class>
+        <point>150</point>
+        <name>ware</name>
+    </class>
+    <change>999</change>
+</root>
