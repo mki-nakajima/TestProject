@@ -1,0 +1,3 @@
+/Applications/Eclipse_4.7.0.app/Contents/workspace/TestProject/apps
+/Applications/Eclipse_4.7.0.app/Contents/workspace/Sample/Sample
+/Applications/Eclipse_4.7.0.app/Contents/workspace/Sample/Sample/apps

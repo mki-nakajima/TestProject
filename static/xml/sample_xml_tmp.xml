@@ -1,0 +1,17 @@
+<?xml version='1.0' encoding='utf-8'?>
+<root>
+    <dir>C:\Bridge Software</dir>
+    <class>
+        <point>50</point>
+        <name>Bridge mod</name>
+    </class>
+    <class>
+        <point>100</point>
+        <name>soft mod</name>
+    </class>
+    <class>
+        <point>150</point>
+        <name>ware mod</name>
+    </class>
+    <change>新しい値</change>
+</root>
