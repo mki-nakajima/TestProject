@@ -1,0 +1,7 @@
+foods	food	+
+foods/food	name,color,test	+,*,+
+f
+oods/food/name	a-zA-Z1-9	0	aaa
+foods/food/color	a-zA-Z1-9	1	qqq
+foods/food/test	aaa	1,
+foods/food/test/aaa	1-9	1	9999
