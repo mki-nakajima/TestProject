@@ -57,7 +57,7 @@ def validate_unification_xml(xml_file_path, validate_config, auto_fix=True):
     @param boolean 自動修復するかしないか
     @return param string  結果？
     '''
-    print("START VALIADTE UNIFICATION.\n")
+    print("START VALIDATE UNIFICATION.\n")
     # XMLファイル読込
     xml_file = None
     try:
@@ -67,9 +67,9 @@ def validate_unification_xml(xml_file_path, validate_config, auto_fix=True):
         print(traceback.format_exc())
         return False
     root_element = xml_file.getroot()
-    print("------------ original -------------")
+    print("------------ before -------------")
     print(tostring(root_element, encoding="unicode"))
-    print("------------ original -------------")
+    print("------------ before -------------")
 
     # 設定ファイルを読み込む
     # 内容をすべてリストに格納する
@@ -106,7 +106,13 @@ def validate_unification_xml(xml_file_path, validate_config, auto_fix=True):
         print("XML save failed.")
         print(traceback.format_exc())
         return False
-    print("FINISH VALIADTE UNIFICATION.")
+
+    root_element = xml_file.getroot()
+    print("------------ after -------------")
+    print(tostring(root_element, encoding="unicode"))
+    print("------------ after -------------")
+
+    print("\nFINISH VALIDATE UNIFICATION.")
 
 
 def validate_tag_exists(root_element, conf_line, conf_csv_lines, auto_fix):
@@ -129,46 +135,58 @@ def validate_tag_exists(root_element, conf_line, conf_csv_lines, auto_fix):
         = conf_line[TAG_EXISTS_EXPECTED_TAG_CONTENT_MODEL_POS]
 
     # チェック対象のタグを検索・処理
-    target_tag_list = root_element.findall(target_tag)
+    target_element_list = root_element
+    if target_tag != "":
+        target_element_list = root_element.findall(target_tag)
+
     # 先のチェックで使用するリスト
     expected_tag_list = expected_tag.split(",")
     expected_tag_content_model_list = expected_tag_content_model.split(",")
-    for tag in target_tag_list:
-        # 直下の子要素にどんなタグをいくつ持っているか調べる
+
+    for parent_element in target_element_list:
         tag_count_dict = {}
-        for c_tag in tag:
-            if c_tag.tag not in expected_tag_list:
+        counter = 0
+        # 直下の子要素にどんなタグをいくつ持っているか調べる
+        # エレメントをfor文で回すときは、list()で囲むこと（囲まないと正しく読まれないことがあった。）
+        for child_element in list(parent_element):
+            counter += 1
+            if child_element.tag not in expected_tag_list:
                 # 想定していないタグを持っている場合、削除する
-                tag.remove(c_tag)
+                print("Del parent_element:" + child_element.tag)
+                parent_element.remove(child_element)
             else:
                 # 想定しているものは数える
-                tag_count = tag_count_dict.get(c_tag.tag, 0)
-                tag_count_dict[c_tag.tag] = (tag_count + 1)
+                tag_count = tag_count_dict.get(child_element.tag, 0) + 1
+                tag_count_dict[child_element.tag] = tag_count
 
         # 直下のタグをチェックする
+        new_child_element = None
         for expected_tag_name, expected_tag_content_model\
-                in enumerate(expected_tag_list,
-                             expected_tag_content_model_list):
-            print("expected:" + expected_tag_name)
-            print("content_model:" + expected_tag_content_model)
+                in zip(expected_tag_list,
+                       expected_tag_content_model_list):
+            print("expected:" + expected_tag_name + expected_tag_content_model)
             if expected_tag_name in tag_count_dict:
                 # 想定するタグが既に存在する場合、数をチェックする
                 if expected_tag_content_model == ZERO_OR_MORE:
                     # 内容モデルが0以上を表す"*"の場合
                     # 要素がなくても問題ないので何もしない
                     pass
-                elif expected_tag_content_model == ONE_OR_MORE\
-                        and tag_count_dict.get(expected_tag_name) < 1:
-                    # 内容モデルが1以上を表す"+"かつ、子要素のタグが1より少ない場合
-                    print("Tag[" + expected_tag_name + "] is Nothing.")
-                    # タグを追加するか
-                    if auto_fix:
-                        c_tag = create_child_tag(tag, conf_csv_lines)
-                        SubElement(tag, c_tag)
-                    else:
-                        # エラー出力
-                        print("エラー")
-                        return False
+                elif expected_tag_content_model == ONE_OR_MORE:
+                    if tag_count_dict.get(expected_tag_name) < 1:
+                        # 内容モデルが1以上を表す"+"かつ、子要素のタグが1より少ない場合
+                        print("Tag[" + expected_tag_name + "] is Nothing.")
+                        # タグを追加するか
+                        if auto_fix:
+                            new_child_element = create_child_element(
+                                parent_element.tag,
+                                expected_tag_name,
+                                conf_csv_lines
+                            )
+                            SubElement(parent_element, new_child_element)
+                        else:
+                            # エラー出力
+                            print("エラー")
+                            return False
                 elif expected_tag_content_model\
                         > tag_count_dict.get(expected_tag_name):
                     # 内容モデルが要素数を表す数値で、カウント結果より多い場合
@@ -176,8 +194,12 @@ def validate_tag_exists(root_element, conf_line, conf_csv_lines, auto_fix):
                     print("Tag[" + expected_tag_name + "] is not Enough.")
                     # タグを追加するか
                     if auto_fix:
-                        c_tag = create_child_tag(tag, conf_csv_lines)
-                        SubElement(tag, c_tag)
+                        new_child_element = create_child_element(
+                            parent_element.tag,
+                            expected_tag_name,
+                            conf_csv_lines
+                        )
+                        SubElement(parent_element, new_child_element)
                     else:
                         # エラー出力
                         print("エラー")
@@ -194,8 +216,12 @@ def validate_tag_exists(root_element, conf_line, conf_csv_lines, auto_fix):
                     return False
             elif auto_fix:
                 # タグを追加する
-                c_tag = create_child_tag(tag, conf_csv_lines)
-                SubElement(tag, c_tag)
+                new_child_element = create_child_element(
+                    parent_element.tag,
+                    expected_tag_name,
+                    conf_csv_lines
+                )
+                parent_element.insert(0, new_child_element)
 
 
 def validate_tag_value(root_element, conf_line):
@@ -226,12 +252,15 @@ def validate_tag_value(root_element, conf_line):
         # 正規表現にマッチしているかチェックする
         for target_tag in target_tag_list:
             if re.match(regexp_pattern, target_tag.text) is None:
-                raise Exception("定義に一致しません。[regexp:" + regexp_pattern + "/text:" + target_tag.text + "]")
+                raise Exception(
+                    "定義に一致しません。[tag:" + target_tag.tag + "/regexp:" +
+                    regexp_pattern + "/text:" + target_tag.text + "]"
+                )
         result = True
     return result
 
 
-def create_child_tag(target_tag_name, conf_csv_lines):
+def create_child_element(parent_tag_name, target_tag_name, conf_csv_lines):
     '''
     子要素タグ追加メソッド
 
@@ -241,34 +270,42 @@ def create_child_tag(target_tag_name, conf_csv_lines):
     @param object 設定ファイル
     @return object 作成した子要素エレメント
     '''
+    child_element = None
     for conf_line in conf_csv_lines:
-        if target_tag_name == conf_line[TAG_EXISTS_TARGET_TAG_POS]:
-            tmp_tag_name = target_tag_name.split("/")[-1]
+        if conf_line[TAG_EXISTS_TARGET_TAG_POS]\
+                == parent_tag_name + "/" + target_tag_name:
             if len(conf_line) == TAG_EXISTS_COLUMN_COUNT:
-                # 子要素があるので自信を実行する
-                for c_tag_name\
+                # 子要素があるので自身を実行する
+                child_element = Element(target_tag_name)
+                print("Create element: " + target_tag_name)
+                for tmp_tag_name\
                         in conf_line[TAG_EXISTS_EXPECTED_TAG_POS].split(","):
-                    c_tag = create_child_tag(
-                        target_tag_name + "/" + c_tag_name,
+                    grandchild_element = create_child_element(
+                        parent_tag_name + "/" + target_tag_name,
+                        tmp_tag_name,
                         conf_csv_lines
                     )
-                    tag = Element(tmp_tag_name)
-                    SubElement(tag, c_tag)
+                    SubElement(child_element, grandchild_element)
+                    print("Append element: " +
+                          grandchild_element.tag + "->" + child_element.tag)
             elif len(conf_line) == TAG_VALUE_COLUMN_COUNT:
                 # タグの値の設定なので、タグを追加する
                 if conf_line[TAG_VALUE_ALLOW_BLANK_POS] == ALLOW_BLANK:
-                    tag = Element(tmp_tag_name)
-                    tag.text = conf_line[TAG_VALUE_DEFAULT_POS]
+                    child_element = Element(target_tag_name)
+                    child_element.text = conf_line[TAG_VALUE_DEFAULT_POS]
+                    print("Create element: " + target_tag_name)
                 else:
                     print("エラー")
                     raise Exception(
-                        "空白許可していないタグは自動生成不可能です。[" + target_tag_name + "/" + tmp_tag_name + "]")
-    return tag
+                        "空白許可していないタグは自動生成不可能です。[" +
+                        parent_tag_name + "/" + tmp_tag_name + "]"
+                    )
+    return child_element
 
 
 if __name__ == '__main__':
     print("XML file validate start.\n")
-    sample_xml_path = "./static/xml_validate/sample_01.xml"
+    sample_xml_path = "./static/xml_validate/sample_02.xml"
     validate_config = "./static/xml_validate/sample_01.csv"
 
     validate_result = False
@@ -281,4 +318,4 @@ if __name__ == '__main__':
         print("xml validate failed.")
         print(traceback.format_exc())
 
-    print("XML file validate finish.")
+    print("\nXML file validate finish.")
